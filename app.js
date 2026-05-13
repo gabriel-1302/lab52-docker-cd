@@ -3,7 +3,7 @@ const app = express();
 
 app.use(express.json());
 
-app.get('/health', (req, res) => {
+app.get('/helth', (req, res) => {
   res.status(200).json({
     status: 'ok',
     version: '3.0.0',
@@ -12,7 +12,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: 'API funcionando correctamente v3' });
+  res.json({ message: 'API funcionando correctamente v4' });
 });
 
 app.get('/api/items', (req, res) => {
