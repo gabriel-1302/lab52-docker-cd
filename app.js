@@ -12,7 +12,7 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: 'API funcionando correctamente' });
+  res.json({ message: 'API funcionando correctamente v2' });
 });
 
 app.get('/api/items', (req, res) => {
