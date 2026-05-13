@@ -30,7 +30,7 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/mi-app:${{ github.sha }}
-            ${{ secrets.DOCKER_USERNAME }}/mi-app:v1.0.0
+            ${{ secrets.DOCKER_USERNAME }}/mi-app:v3.0.0
             ${{ secrets.DOCKER_USERNAME }}/mi-app:latest
 
       - name: Escaneo de vulnerabilidades con Trivy

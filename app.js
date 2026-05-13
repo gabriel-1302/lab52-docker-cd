@@ -6,13 +6,13 @@ app.use(express.json());
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
-    version: '2.0.0',
+    version: '3.0.0',
     timestamp: new Date().toISOString()
   });
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: 'API funcionando correctamente v2' });
+  res.json({ message: 'API funcionando correctamente v3' });
 });
 
 app.get('/api/items', (req, res) => {
