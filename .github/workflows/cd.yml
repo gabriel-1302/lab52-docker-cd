@@ -30,14 +30,26 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/mi-app:${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/mi-app:v1.0.0
             ${{ secrets.DOCKER_USERNAME }}/mi-app:latest
 
-  deploy:
+      - name: Escaneo de vulnerabilidades con Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.DOCKER_USERNAME }}/mi-app:${{ github.sha }}
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  deploy-staging:
     needs: build-and-push
     runs-on: ubuntu-latest
+    environment: staging
 
     steps:
-      - name: Desplegar en servidor remoto via SSH
+      - name: Desplegar en Staging
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -46,22 +58,72 @@ jobs:
           script: |
             IMAGE="${{ secrets.DOCKER_USERNAME }}/mi-app:latest"
 
-            echo "=== Iniciando despliegue de $IMAGE ==="
+            echo "=== Desplegando en STAGING ==="
+
+            docker pull $IMAGE
+
+            docker run -d \
+              --name mi-app-staging-new \
+              --restart unless-stopped \
+              -p 3001:3000 \
+              $IMAGE
+
+            sleep 5
+
+            if curl -sf http://localhost:3001/health; then
+              echo ""
+              echo "Health check exitoso en staging."
+
+              docker stop mi-app-staging || true
+              docker rm mi-app-staging || true
+
+              docker run -d \
+                --name mi-app-staging \
+                --restart unless-stopped \
+                -p 3001:3000 \
+                $IMAGE
+
+              docker rm -f mi-app-staging-new || true
+              echo "Staging actualizado correctamente."
+            else
+              echo ""
+              echo "Health check FALLIDO en staging."
+              docker rm -f mi-app-staging-new || true
+              exit 1
+            fi
+
+            docker system prune -f
+
+  deploy-production:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Desplegar en Production
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            IMAGE="${{ secrets.DOCKER_USERNAME }}/mi-app:${{ github.sha }}"
+
+            echo "=== Desplegando en PRODUCTION ==="
 
             docker pull $IMAGE
 
             docker run -d \
               --name mi-app-new \
               --restart unless-stopped \
-              -p 3001:3000 \
+              -p 8080:3000 \
               $IMAGE
 
-            echo "Esperando 5 segundos para que el contenedor inicialice..."
             sleep 5
 
-            if curl -sf http://localhost:3001/health; then
+            if curl -sf http://localhost:8080/health; then
               echo ""
-              echo "Health check exitoso. Activando nuevo contenedor..."
+              echo "Health check exitoso. Activando en produccion..."
 
               docker stop mi-app || true
               docker rm mi-app || true
@@ -73,11 +135,10 @@ jobs:
                 $IMAGE
 
               docker rm -f mi-app-new || true
-
-              echo "Despliegue completado exitosamente."
+              echo "Produccion actualizada correctamente."
             else
               echo ""
-              echo "Health check FALLIDO. Cancelando despliegue."
+              echo "Health check FALLIDO. Cancelando despliegue en produccion."
               docker rm -f mi-app-new || true
               exit 1
             fi
